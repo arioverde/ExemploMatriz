@@ -51,11 +51,19 @@ namespace ApiCliente.Repositories.Repositorio
                 return Convert.ToBoolean(cmd.ExecuteScalar());
             }
         }
-        public List<Cliente> ListarClientes()
+        public List<Cliente> ListarClientes(string? nome)
         {
-            string comandoSql = @"SELECT CpfCliente, Nome, Nascimento, Telefone FROM Cliente;";
+            string comandoSql = @"SELECT CpfCliente, Nome, Nascimento, Telefone FROM Cliente";
+
+            if (!(string.IsNullOrWhiteSpace(nome)))
+                comandoSql += " WHERE Nome LIKE @nome";
+
+
             using (var cmd = new MySqlCommand(comandoSql, _conn))
             {
+                if (!(string.IsNullOrWhiteSpace(nome)))
+                    cmd.Parameters.AddWithValue("@nome", "%" + nome + "%");
+
                 using (var rdr = cmd.ExecuteReader())
                 {
                     var clientes = new List<Cliente>();
@@ -81,6 +89,31 @@ namespace ApiCliente.Repositories.Repositorio
                 cmd.Parameters.AddWithValue("@CpfCliente", CpfCliente);
                 if (cmd.ExecuteNonQuery() == 0)
                     throw new InvalidOperationException($"Nenhum registro afetado para o Cpf {CpfCliente}");
+            }
+        }
+        public Cliente? Obter(string CpfCliente)
+        {
+            string comandoSql = @"SELECT CpfCliente, Nome, Nascimento, Telefone FROM Cliente WHERE CpfCliente = @CpfCliente;";
+
+            using (var cmd = new MySqlCommand(comandoSql, _conn))
+            {
+                cmd.Parameters.AddWithValue("@CpfCliente", CpfCliente);
+
+                using (var rdr = cmd.ExecuteReader())
+                {
+                    var cliente = new Cliente();
+
+                    if (rdr.Read())
+                    {
+                        cliente.CpfCliente = Convert.ToString(rdr["CpfCliente"]);
+                        cliente.Nome = Convert.ToString(rdr["Nome"]);
+                        cliente.Nascimento = Convert.ToDateTime(rdr["Nascimento"]);
+                        cliente.Telefone = rdr["Telefone"] == DBNull.Value ? null : Convert.ToString(rdr["Telefone"]);
+                        return cliente;
+                    }
+                    else
+                        return null;
+                }
             }
         }
     }
